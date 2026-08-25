@@ -1,0 +1,243 @@
+services:
+
+  db:
+    image: postgres:15-alpine
+    container_name: rai_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER}
+      POSTGRES_PASSWORD: ${DB_PASSWORD}
+      POSTGRES_DB: ${DB_NAME}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  nginx:
+    image: nginx:1.25-alpine
+    container_name: rai_nginx
+    restart: unless-stopped
+    ports:
+      - "8000:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf
+      - ./media:/app/media
+    depends_on:
+      web:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
+      
+  web:
+    build: .
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+      update_config:
+        parallelism: 1
+        order: start-first
+      resources:
+        limits:
+          memory: 1g
+          cpus: '1.0'
+    env_file:
+      - .env
+    environment:
+      RUNNING_IN_DOCKER: "true"
+      REDIS_URL: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/1
+      DB_HOST: pgbouncer
+      RUN_MIGRATIONS: "false"
+    volumes:
+      - ./media:/app/media
+      - logs_volume:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+      db-migrator:
+        condition: service_completed_successfully
+
+  db-migrator:
+    build: .
+    container_name: rai_db_migrator
+    env_file:
+      - .env
+    environment:
+      RUNNING_IN_DOCKER: "false"
+      DB_HOST: pgbouncer
+      REDIS_URL: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/1
+    volumes:
+      - ./media:/app/media
+      - logs_volume:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+    command: sh -c "python manage.py makemigrations authentication dashboard ai community support betting && python manage.py migrate"
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.5'
+      
+  celery_ai:
+    build: .
+    hostname: worker_ai
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.75'
+    env_file:
+      - .env
+    environment:
+      RUNNING_IN_DOCKER: "true"
+      REDIS_URL: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/1
+      DB_HOST: pgbouncer
+    volumes:
+      - ./media:/app/media
+      - logs_volume:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+    command: celery -A Rai_Backend worker --pool=threads --concurrency=20 -Q default -n worker_ai@worker_ai --loglevel=info
+    healthcheck:
+      test: ["CMD", "celery", "-A", "Rai_Backend", "inspect", "ping", "-d", "worker_ai@worker_ai"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+    
+  celery_heavy:
+    build: .
+    hostname: worker_heavy
+    restart: unless-stopped
+    deploy:
+      replicas: 3
+      resources:
+        limits:
+          memory: 512m
+          cpus: '0.75'
+    env_file:
+      - .env
+    environment:
+      RUNNING_IN_DOCKER: "true"
+      REDIS_URL: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/1
+      DB_HOST: pgbouncer
+    volumes:
+      - ./media:/app/media
+      - logs_volume:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+    command: celery -A Rai_Backend worker --pool=prefork --concurrency=2 -Q heavy_queue -n worker_heavy@worker_heavy --loglevel=info
+    healthcheck:
+      test: ["CMD", "celery", "-A", "Rai_Backend", "inspect", "ping", "-d", "worker_heavy@worker_heavy"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
+
+  celery_beat:
+    build: .
+    container_name: rai_celery_beat
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 256m
+          cpus: '0.25'
+    env_file:
+      - .env
+    environment:
+      RUNNING_IN_DOCKER: "true"
+      REDIS_URL: redis://redis:6379/0
+      CACHE_REDIS_URL: redis://redis:6379/1
+      DB_HOST: pgbouncer
+    volumes:
+      - logs_volume:/app/logs
+    depends_on:
+      redis:
+        condition: service_healthy
+      pgbouncer:
+        condition: service_healthy
+    command: celery -A Rai_Backend beat --loglevel=info
+    
+  redis:
+    image: redis:7-alpine
+    container_name: rai_redis
+    restart: unless-stopped
+    command: redis-server --maxmemory 256mb --maxmemory-policy allkeys-lru --save 60 1 --loglevel warning
+    expose:
+      - "6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 320m
+          cpus: '0.5'
+
+  pgbouncer:
+    image: edoburu/pgbouncer:latest
+    container_name: rai_pgbouncer
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DB_HOST=${DB_HOST}
+      - DB_PORT=${DB_PORT}
+      - DB_USER=${DB_USER}
+      - DB_PASSWORD=${DB_PASSWORD}
+      - DB_NAME=${DB_NAME}
+      - DATABASES=${DB_NAME} = host=${DB_HOST} port=${DB_PORT} auth_user=${DB_USER} password=${DB_PASSWORD}
+      - AUTH_TYPE=plain
+      - POOL_MODE=transaction
+      - MAX_CLIENT_CONN=1000
+      - DEFAULT_POOL_SIZE=30
+      - MIN_POOL_SIZE=5
+      - SERVER_IDLE_TIMEOUT=600
+    expose:
+      - "5432"
+    healthcheck:
+      test: ["CMD", "pg_isready", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    deploy:
+      resources:
+        limits:
+          memory: 128m
+          cpus: '0.25'
+
+volumes:
+  media_volume:
+  logs_volume:
+  redis_data:
+  postgres_data:
