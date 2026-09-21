@@ -78,6 +78,12 @@ def sync_odds_data():
                                     'ev_percentage': metrics['ev']
                                 }
                             )
+        if not Pick.objects.filter(is_pick_of_the_day=True).exists():
+            top_pick = Pick.objects.order_by('-ev_percentage').first()
+            if top_pick:
+                top_pick.is_pick_of_the_day = True
+                top_pick.save(update_fields=['is_pick_of_the_day'])
+
         logger.info("sync_odds_completed")
     except Exception as e:
         logger.error("sync_odds_failed", error=str(e), exc_info=True)

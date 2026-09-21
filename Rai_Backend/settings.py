@@ -225,10 +225,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "authentication.tasks.cleanup_expired_otps_task",
         "schedule": crontab(minute='*/15'),
     },
-    # "sync-odds-every-30-minutes": {
-    #     "task": "betting.tasks.sync_odds_data",
-    #     "schedule": crontab(minute='*/20'),
-    # },
+    "sync-odds-every-20-minutes": {
+        "task": "betting.tasks.sync_odds_data",
+        "schedule": crontab(minute='*/20'),
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [

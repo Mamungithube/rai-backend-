@@ -44,4 +44,4 @@ class CustomJSONRenderer(JSONRenderer):
             response_data['data'] = None
             response_data['errors'] = data
 
-        return ujson.dumps(response_data).encode('utf-8')
+        return ujson.dumps(response_data, default=str).encode('utf-8')

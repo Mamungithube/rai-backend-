@@ -21,7 +21,10 @@ RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 COPY . .
 
 RUN mkdir -p /app/logs /app/staticfiles /app/media \
+    && touch /app/logs/django.log \
+    && sed -i 's/\r$//' /app/entrypoint.sh \
     && chown -R appuser:appgroup /app \
+    && chmod -R 777 /app/logs /app/media /app/staticfiles \
     && chmod +x /app/entrypoint.sh
 
 RUN SECRET_KEY="dummy_key_for_build" python manage.py collectstatic --noinput --clear

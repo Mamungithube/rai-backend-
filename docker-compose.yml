@@ -40,7 +40,7 @@ services:
     build: .
     restart: unless-stopped
     deploy:
-      replicas: 3
+      replicas: 1
       update_config:
         parallelism: 1
         order: start-first
@@ -73,7 +73,7 @@ services:
     env_file:
       - .env
     environment:
-      RUNNING_IN_DOCKER: "false"
+      RUNNING_IN_DOCKER: "true"
       DB_HOST: pgbouncer
       REDIS_URL: redis://redis:6379/0
       CACHE_REDIS_URL: redis://redis:6379/1
@@ -97,7 +97,7 @@ services:
     hostname: worker_ai
     restart: unless-stopped
     deploy:
-      replicas: 3
+      replicas: 1
       resources:
         limits:
           memory: 512m
@@ -130,7 +130,7 @@ services:
     hostname: worker_heavy
     restart: unless-stopped
     deploy:
-      replicas: 3
+      replicas: 1
       resources:
         limits:
           memory: 512m
@@ -211,12 +211,12 @@ services:
       db:
         condition: service_healthy
     environment:
-      - DB_HOST=${DB_HOST}
-      - DB_PORT=${DB_PORT}
+      - DB_HOST=db
+      - DB_PORT=5432
       - DB_USER=${DB_USER}
       - DB_PASSWORD=${DB_PASSWORD}
       - DB_NAME=${DB_NAME}
-      - DATABASES=${DB_NAME} = host=${DB_HOST} port=${DB_PORT} auth_user=${DB_USER} password=${DB_PASSWORD}
+      - DATABASES=${DB_NAME} = host=db port=5432 auth_user=${DB_USER} password=${DB_PASSWORD}
       - AUTH_TYPE=plain
       - POOL_MODE=transaction
       - MAX_CLIENT_CONN=1000
