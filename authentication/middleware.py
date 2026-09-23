@@ -13,6 +13,12 @@ logger = logging.getLogger("authentication")
 @database_sync_to_async
 def get_user(token_key):
     try:
+        if not token_key:
+            return AnonymousUser()
+
+        if token_key.startswith("Bearer ") or token_key.startswith("bearer "):
+            token_key = token_key.split(" ", 1)[1].strip()
+
         cache_key = f"ws_auth_{hashlib.sha256(token_key.encode()).hexdigest()}"
         cached_user_id = cache.get(cache_key)
         
@@ -50,7 +56,14 @@ class JWTAuthMiddleware:
             query_string = parse_qs(scope.get("query_string", b"").decode("utf8"))
             token = query_string.get("token")
             
-            if token and len(token) > 0:
+            if not token:
+                headers = dict(scope.get("headers", []))
+                if b"authorization" in headers:
+                    auth_header = headers[b"authorization"].decode("utf8")
+                    if auth_header.startswith("Bearer ") or auth_header.startswith("bearer "):
+                        token = [auth_header.split(" ", 1)[1]]
+
+            if token and len(token) > 0 and token[0]:
                 scope["user"] = await get_user(token[0])
             else:
                 scope["user"] = AnonymousUser()
