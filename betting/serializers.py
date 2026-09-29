@@ -3,6 +3,7 @@ from .models import Pick, Match, UserParlay, SavedPick
 
 
 class PickSerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True)
     match = serializers.UUIDField(source='match.id', read_only=True)
     home_team = serializers.CharField(source='match.home_team', read_only=True)
     away_team = serializers.CharField(source='match.away_team', read_only=True)
@@ -16,6 +17,7 @@ class PickSerializer(serializers.ModelSerializer):
 
 
 class ParlaySerializer(serializers.ModelSerializer):
+    id = serializers.UUIDField(read_only=True)
     picks = PickSerializer(many=True, read_only=True)
 
     class Meta:

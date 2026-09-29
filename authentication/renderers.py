@@ -1,5 +1,6 @@
-import ujson
+import json
 import time
+from django.core.serializers.json import DjangoJSONEncoder
 from rest_framework.renderers import JSONRenderer
 
 class CustomJSONRenderer(JSONRenderer):
@@ -44,9 +45,4 @@ class CustomJSONRenderer(JSONRenderer):
             response_data['data'] = None
             response_data['errors'] = data
 
-        try:
-            return ujson.dumps(response_data, default=str).encode('utf-8')
-        except Exception:
-            import json
-            from django.core.serializers.json import DjangoJSONEncoder
-            return json.dumps(response_data, cls=DjangoJSONEncoder).encode('utf-8')
+        return json.dumps(response_data, cls=DjangoJSONEncoder).encode('utf-8')
