@@ -43,7 +43,7 @@ ALLOWED_HOSTS = [h.strip() for h in os.getenv(
     "ALLOWED_HOSTS", "").split(",") if h.strip()]
 
 if RUNNING_IN_DOCKER:
-    ALLOWED_HOSTS.extend(["localhost", "127.0.0.1", "web"])
+    ALLOWED_HOSTS.extend(["localhost", "127.0.0.1", "web", "testserver"])
 
 SERVER_BASE_URL = os.getenv("SERVER_BASE_URL", "http://localhost:8000")
 
