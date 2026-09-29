@@ -64,8 +64,6 @@ services:
         condition: service_healthy
       pgbouncer:
         condition: service_healthy
-      db-migrator:
-        condition: service_completed_successfully
 
   db-migrator:
     build: .
