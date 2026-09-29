@@ -38,6 +38,10 @@ urlpatterns = [
     path('api/dashboard/', include('dashboard.urls')),
     path('api/health/', health_check, name='health-check'),
     path('api/betting/', include('betting.urls')),
+    path('api/comments/', include('comment_concern.urls')),
+    path('api/comment-concern/', include('comment_concern.urls')),
+    path('api/notifications/', include('notifications.urls')),
+    path('api/pages/', include('dashboard.pages_urls')),
 ]
 
 if settings.DEBUG:

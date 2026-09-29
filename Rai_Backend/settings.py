@@ -81,6 +81,8 @@ INSTALLED_APPS = [
     "community",
     "support",
     "betting",
+    "comment_concern",
+    "notifications",
 ]
 
 MIDDLEWARE = [
