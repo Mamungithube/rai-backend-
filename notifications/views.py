@@ -56,3 +56,40 @@ class NotificationViewSet(
             "message": f"Cleared {deleted_count} read notifications.",
             "deleted_count": deleted_count
         }, status=status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post'], url_path='fcm-token')
+    def register_fcm_token(self, request):
+        fcm_token = request.data.get('fcm_token')
+        device_type = request.data.get('device_type', 'android').lower()
+
+        if not fcm_token or not fcm_token.strip():
+            return Response({"detail": "fcm_token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .models import FCMDevice
+        device, created = FCMDevice.objects.update_or_create(
+            fcm_token=fcm_token.strip(),
+            defaults={
+                'user': request.user,
+                'device_type': device_type if device_type in ['android', 'ios', 'web'] else 'android',
+                'is_active': True,
+            }
+        )
+        return Response({
+            "message": "FCM device token registered successfully.",
+            "device_id": str(device.id),
+            "device_type": device.device_type,
+            "is_active": device.is_active
+        }, status=status.HTTP_201_CREATED if created else status.HTTP_200_OK)
+
+    @action(detail=False, methods=['post', 'delete'], url_path='fcm-token/remove')
+    def remove_fcm_token(self, request):
+        fcm_token = request.data.get('fcm_token')
+        if not fcm_token or not fcm_token.strip():
+            return Response({"detail": "fcm_token is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        from .models import FCMDevice
+        updated = FCMDevice.objects.filter(fcm_token=fcm_token.strip(), user=request.user).update(is_active=False)
+        return Response({
+            "message": "FCM device token removed/deactivated.",
+            "success": updated > 0
+        }, status=status.HTTP_200_OK)

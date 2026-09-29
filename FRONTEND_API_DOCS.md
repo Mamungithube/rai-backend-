@@ -116,11 +116,60 @@ Opens from the bottom sheet modal ("Submit Comment & Concern"). Only the `messag
 
 ---
 
-## 2. Notification System API
+## 2. Notification System & Mobile Push (FCM) API
 
-Used for in-app user alerts, bell icon badge count, and notification feed.
+Used for mobile push notifications (Firebase Cloud Messaging), in-app user alerts, bell icon badge count, and notification feed.
 
-### 2.1 Get Unread Notifications Count (For Bell Icon Badge)
+### 2.1 Register FCM Device Token (For Mobile Push Notifications)
+Call this immediately after user logs in or when Firebase generates/refreshes the FCM registration token on the device (Android / iOS).
+
+- **Method:** `POST`
+- **Endpoint:** `/api/notifications/fcm-token/`
+- **Headers:** `Authorization: Bearer <token>`
+- **Request Body:**
+```json
+{
+  "fcm_token": "eX_ample_fcm_token_generated_by_firebase_on_mobile_device_...",
+  "device_type": "android" // "android" or "ios" or "web"
+}
+```
+
+#### Response (`200 OK` or `201 Created`):
+```json
+{
+  "message": "FCM device token registered successfully.",
+  "device_id": "8b528a49-df63-4796-98dc-a760eb8c1566",
+  "device_type": "android",
+  "is_active": true
+}
+```
+
+---
+
+### 2.2 Remove FCM Device Token (On Logout)
+Call this when the user logs out so they no longer receive push notifications on this device.
+
+- **Method:** `POST` (or `DELETE`)
+- **Endpoint:** `/api/notifications/fcm-token/remove/`
+- **Headers:** `Authorization: Bearer <token>`
+- **Request Body:**
+```json
+{
+  "fcm_token": "eX_ample_fcm_token_generated_by_firebase_on_mobile_device_..."
+}
+```
+
+#### Response (`200 OK`):
+```json
+{
+  "message": "FCM device token removed/deactivated.",
+  "success": true
+}
+```
+
+---
+
+### 2.3 Get Unread Notifications Count (For Bell Icon Badge)
 Fast endpoint to check how many unread notifications exist.
 
 - **Method:** `GET`

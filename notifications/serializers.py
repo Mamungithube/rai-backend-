@@ -33,3 +33,21 @@ class NotificationSerializer(serializers.ModelSerializer):
         if obj.created_at:
             return obj.created_at.strftime("%d %b %Y, %I:%M %p")
         return None
+
+
+class FCMDeviceSerializer(serializers.ModelSerializer):
+    class Meta:
+        from .models import FCMDevice
+        model = FCMDevice
+        fields = ['id', 'fcm_token', 'device_type', 'is_active', 'created_at']
+        read_only_fields = ['id', 'is_active', 'created_at']
+
+    def validate_fcm_token(self, value):
+        cleaned = value.strip() if value else ""
+        if not cleaned:
+            raise serializers.ValidationError("FCM token cannot be empty.")
+        return cleaned
+
+
+class FCMTokenRemoveSerializer(serializers.Serializer):
+    fcm_token = serializers.CharField(required=True)

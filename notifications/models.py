@@ -47,3 +47,33 @@ class Notification(models.Model):
 
     def __str__(self):
         return f"{self.user.username} - {self.title} ({'Read' if self.is_read else 'Unread'})"
+
+
+class FCMDevice(models.Model):
+    DEVICE_TYPES = (
+        ('android', 'Android'),
+        ('ios', 'iOS'),
+        ('web', 'Web'),
+    )
+
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="fcm_devices",
+        db_index=True
+    )
+    fcm_token = models.CharField(max_length=500, unique=True, db_index=True)
+    device_type = models.CharField(max_length=10, choices=DEVICE_TYPES, default='android')
+    is_active = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        indexes = [
+            models.Index(fields=['user', 'is_active']),
+            models.Index(fields=['fcm_token']),
+        ]
+
+    def __str__(self):
+        return f"{self.user.username} ({self.device_type}) - {self.fcm_token[:20]}..."
