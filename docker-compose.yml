@@ -74,16 +74,17 @@ services:
       - .env
     environment:
       RUNNING_IN_DOCKER: "true"
-      DB_HOST: pgbouncer
+      DB_HOST: db
+      DB_PORT: "5432"
       REDIS_URL: redis://redis:6379/0
       CACHE_REDIS_URL: redis://redis:6379/1
     volumes:
       - ./media:/app/media
       - logs_volume:/app/logs
     depends_on:
-      redis:
+      db:
         condition: service_healthy
-      pgbouncer:
+      redis:
         condition: service_healthy
     command: sh -c "python manage.py makemigrations authentication dashboard ai community support betting && python manage.py migrate"
     deploy:
