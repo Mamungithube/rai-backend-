@@ -1,7 +1,7 @@
 # Rai Backend - Frontend & Mobile API Documentation
 
 ## Base Configuration
-- **Base URL (Production):** `https://api.rai.imikemorgan.com` (or your configured VPS domain / server IP:port)
+- **Base URL (Production):** `https://api.rai-tech.com`
 - **Content-Type:** `application/json`
 - **Authentication Header:** All protected endpoints require a JWT Bearer token:
   ```http
