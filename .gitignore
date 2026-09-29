@@ -18,3 +18,5 @@ community_icons
 dashboard.json
 chat_images
 community_audiodb.sqlite3
+logs.md
+db.sqlite3

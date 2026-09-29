@@ -44,4 +44,9 @@ class CustomJSONRenderer(JSONRenderer):
             response_data['data'] = None
             response_data['errors'] = data
 
-        return ujson.dumps(response_data, default=str).encode('utf-8')
+        try:
+            return ujson.dumps(response_data, default=str).encode('utf-8')
+        except Exception:
+            import json
+            from django.core.serializers.json import DjangoJSONEncoder
+            return json.dumps(response_data, cls=DjangoJSONEncoder).encode('utf-8')

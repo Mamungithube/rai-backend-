@@ -3,11 +3,12 @@ from .models import Pick, Match, UserParlay, SavedPick
 
 
 class PickSerializer(serializers.ModelSerializer):
-    home_team = serializers.CharField(source='match.home_team')
-    away_team = serializers.CharField(source='match.away_team')
-    home_team_logo = serializers.URLField(source='match.home_team_logo')
-    away_team_logo = serializers.URLField(source='match.away_team_logo')
-    sport = serializers.CharField(source='match.sport.name')
+    match = serializers.UUIDField(source='match.id', read_only=True)
+    home_team = serializers.CharField(source='match.home_team', read_only=True)
+    away_team = serializers.CharField(source='match.away_team', read_only=True)
+    home_team_logo = serializers.URLField(source='match.home_team_logo', allow_null=True, required=False, read_only=True)
+    away_team_logo = serializers.URLField(source='match.away_team_logo', allow_null=True, required=False, read_only=True)
+    sport = serializers.CharField(source='match.sport.name', read_only=True)
 
     class Meta:
         model = Pick
