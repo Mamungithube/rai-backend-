@@ -84,7 +84,7 @@ services:
         condition: service_healthy
       redis:
         condition: service_healthy
-    command: sh -c "python manage.py makemigrations authentication dashboard ai community support betting && python manage.py migrate"
+    command: sh -c "python manage.py makemigrations authentication dashboard ai community support betting comment_concern notifications && python manage.py migrate"
     deploy:
       resources:
         limits:

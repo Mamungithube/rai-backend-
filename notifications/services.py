@@ -21,13 +21,34 @@ def get_firebase_app():
         from firebase_admin import credentials
 
         if not firebase_admin._apps:
+            # 1. Check if raw JSON string is provided in .env
+            cred_json = os.getenv("FIREBASE_CREDENTIALS_JSON")
+            if cred_json:
+                try:
+                    import json
+                    cred_json_str = cred_json.strip()
+                    if cred_json_str.startswith('{'):
+                        cred_dict = json.loads(cred_json_str)
+                    else:
+                        import base64
+                        decoded = base64.b64decode(cred_json_str).decode('utf-8')
+                        cred_dict = json.loads(decoded)
+                    cred = credentials.Certificate(cred_dict)
+                    firebase_admin.initialize_app(cred)
+                    logger.info("firebase_initialized_from_env_json")
+                    _firebase_initialized = True
+                    return True
+                except Exception as json_err:
+                    logger.warning("firebase_json_parse_failed", error=str(json_err))
+
+            # 2. Check if file path is provided in .env
             cred_path = os.getenv("FIREBASE_CREDENTIALS_PATH")
             if cred_path and os.path.exists(cred_path):
                 cred = credentials.Certificate(cred_path)
                 firebase_admin.initialize_app(cred)
                 logger.info("firebase_initialized_from_path", path=cred_path)
             else:
-                # Try default credentials or environment
+                # 3. Try default credentials or environment
                 try:
                     firebase_admin.initialize_app()
                     logger.info("firebase_initialized_default")
