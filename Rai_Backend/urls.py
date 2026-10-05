@@ -21,7 +21,7 @@ logger = logging.getLogger(__name__)
 def docs_basic_auth(view_func):
     @wraps(view_func)
     def _wrapped_view(request, *args, **kwargs):
-        expected_user = getattr(settings, 'DOCS_USERNAME', 'Admin')
+        expected_user = getattr(settings, 'DOCS_USERNAME', 'admin')
         expected_pass = getattr(settings, 'DOCS_PASSWORD', 'password')
 
         auth_header = request.META.get('HTTP_AUTHORIZATION', '')
