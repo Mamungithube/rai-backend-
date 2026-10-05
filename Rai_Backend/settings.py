@@ -477,6 +477,14 @@ SPECTACULAR_SETTINGS = {
     "TITLE": "Rai Backend API",
     "DESCRIPTION": "Production Grade API for Rai Application",
     "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": True,
+        "filter": True,
+    },
 }
 
 LANGUAGE_CODE = "en-us"

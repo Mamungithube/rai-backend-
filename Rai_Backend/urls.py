@@ -2,9 +2,12 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-from rest_framework.permissions import IsAdminUser
-from rest_framework.authentication import SessionAuthentication
+from drf_spectacular.views import (
+    SpectacularAPIView,
+    SpectacularSwaggerView,
+    SpectacularRedocView,
+)
+from rest_framework.permissions import AllowAny
 from django.http import JsonResponse
 from django.db import connection
 import logging
@@ -42,23 +45,13 @@ urlpatterns = [
     path('api/comment-concern/', include('comment_concern.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/pages/', include('dashboard.pages_urls')),
+
+    # API Documentation (Swagger & ReDoc)
+    path('api/schema/', SpectacularAPIView.as_view(permission_classes=[AllowAny]), name='schema'),
+    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema', permission_classes=[AllowAny]), name='swagger-ui'),
+    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema', permission_classes=[AllowAny]), name='redoc'),
 ]
 
 if settings.DEBUG:
-    urlpatterns += [
-        path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
-        path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
-    ]
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
-
-from drf_spectacular.views import SpectacularAPIView, SpectacularSwaggerView
-urlpatterns += [
-    path('api/schema/', SpectacularAPIView.as_view(
-        permission_classes=[IsAdminUser]
-    ), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(
-        url_name='schema',
-        permission_classes=[IsAdminUser]
-    ), name='swagger-ui'),
-]

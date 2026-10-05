@@ -19,3 +19,4 @@ chat_images
 community_audiodb.sqlite3
 logs.md
 db.sqlite3
+FRONTEND_API_DOCS.md
