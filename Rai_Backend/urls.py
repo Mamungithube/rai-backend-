@@ -8,11 +8,40 @@ from drf_spectacular.views import (
     SpectacularRedocView,
 )
 from rest_framework.permissions import AllowAny
-from django.http import JsonResponse
+import base64
+import secrets
+from functools import wraps
+from django.http import HttpResponse, JsonResponse
 from django.db import connection
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+def docs_basic_auth(view_func):
+    @wraps(view_func)
+    def _wrapped_view(request, *args, **kwargs):
+        expected_user = getattr(settings, 'DOCS_USERNAME', 'Admin')
+        expected_pass = getattr(settings, 'DOCS_PASSWORD', 'password')
+
+        auth_header = request.META.get('HTTP_AUTHORIZATION', '')
+        if auth_header.startswith('Basic '):
+            try:
+                auth_decoded = base64.b64decode(auth_header[6:]).decode('utf-8')
+                username, password = auth_decoded.split(':', 1)
+                if secrets.compare_digest(username, expected_user) and secrets.compare_digest(password, expected_pass):
+                    return view_func(request, *args, **kwargs)
+            except Exception:
+                pass
+
+        response = HttpResponse(
+            "Unauthorized: Access to API documentation requires valid credentials.\n",
+            status=401,
+            content_type="text/plain"
+        )
+        response['WWW-Authenticate'] = 'Basic realm="Rai API Documentation"'
+        return response
+    return _wrapped_view
 
 
 def health_check(request):
@@ -46,10 +75,10 @@ urlpatterns = [
     path('api/notifications/', include('notifications.urls')),
     path('api/pages/', include('dashboard.pages_urls')),
 
-    # API Documentation (Swagger & ReDoc)
-    path('api/schema/', SpectacularAPIView.as_view(permission_classes=[AllowAny]), name='schema'),
-    path('api/docs/', SpectacularSwaggerView.as_view(url_name='schema', permission_classes=[AllowAny]), name='swagger-ui'),
-    path('api/redoc/', SpectacularRedocView.as_view(url_name='schema', permission_classes=[AllowAny]), name='redoc'),
+    # Protected API Documentation (HTTP Basic Auth)
+    path('api/schema/', docs_basic_auth(SpectacularAPIView.as_view(permission_classes=[AllowAny])), name='schema'),
+    path('api/docs/', docs_basic_auth(SpectacularSwaggerView.as_view(url_name='schema', permission_classes=[AllowAny])), name='swagger-ui'),
+    path('api/redoc/', docs_basic_auth(SpectacularRedocView.as_view(url_name='schema', permission_classes=[AllowAny])), name='redoc'),
 ]
 
 if settings.DEBUG:

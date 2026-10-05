@@ -473,6 +473,9 @@ INFOBIP_BASE_URL = os.getenv("INFOBIP_BASE_URL")
 INFOBIP_API_KEY = os.getenv("INFOBIP_API_KEY")
 INFOBIP_SENDER_ID = os.getenv("INFOBIP_SENDER_ID")
 
+DOCS_USERNAME = os.getenv("DOCS_USERNAME", "Admin")
+DOCS_PASSWORD = os.getenv("DOCS_PASSWORD", "password")
+
 SPECTACULAR_SETTINGS = {
     "TITLE": "Rai Backend API",
     "DESCRIPTION": "Production Grade API for Rai Application",
@@ -484,6 +487,7 @@ SPECTACULAR_SETTINGS = {
         "persistAuthorization": True,
         "displayOperationId": True,
         "filter": True,
+        "withCredentials": True,
     },
 }
 
