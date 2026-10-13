@@ -57,7 +57,6 @@ services:
       DB_HOST: pgbouncer
       RUN_MIGRATIONS: "false"
     volumes:
-      - .:/app
       - ./media:/app/media
       - logs_volume:/app/logs
     depends_on:
@@ -78,7 +77,6 @@ services:
       REDIS_URL: redis://redis:6379/0
       CACHE_REDIS_URL: redis://redis:6379/1
     volumes:
-      - .:/app
       - ./media:/app/media
       - logs_volume:/app/logs
     depends_on:
@@ -111,7 +109,6 @@ services:
       CACHE_REDIS_URL: redis://redis:6379/1
       DB_HOST: pgbouncer
     volumes:
-      - .:/app
       - ./media:/app/media
       - logs_volume:/app/logs
     depends_on:
@@ -145,7 +142,6 @@ services:
       CACHE_REDIS_URL: redis://redis:6379/1
       DB_HOST: pgbouncer
     volumes:
-      - .:/app
       - ./media:/app/media
       - logs_volume:/app/logs
     depends_on:
@@ -178,7 +174,6 @@ services:
       CACHE_REDIS_URL: redis://redis:6379/1
       DB_HOST: pgbouncer
     volumes:
-      - .:/app
       - logs_volume:/app/logs
     depends_on:
       redis:
