@@ -19,12 +19,14 @@ class Match(models.Model):
     away_team_logo = models.URLField(blank=True, null=True)
     start_time = models.DateTimeField(db_index=True)
     is_active = models.BooleanField(default=True, db_index=True)
+    is_futures = models.BooleanField(default=False, db_index=True)
     
     class Meta:
         ordering =['start_time']
         indexes = [
             models.Index(fields=['is_active', 'start_time']),
             models.Index(fields=['sport', 'is_active']),
+            models.Index(fields=['is_futures', 'is_active']),
         ]
 
     def save(self, *args, **kwargs):
@@ -49,6 +51,7 @@ class Pick(models.Model):
     confidence_percentage = models.IntegerField(default=0)
     breakdown_text = models.TextField(blank=True, null=True)
     is_pick_of_the_day = models.BooleanField(default=False, db_index=True)
+    is_futures = models.BooleanField(default=False, db_index=True)
     expert_name = models.CharField(max_length=100, blank=True, null=True)
     expert_photo = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)
@@ -58,6 +61,7 @@ class Pick(models.Model):
         indexes = [
             models.Index(fields=['match', 'pick_type']),
             models.Index(fields=['is_pick_of_the_day', '-created_at']),
+            models.Index(fields=['is_futures', '-created_at']),
         ]
 
     def save(self, *args, **kwargs):

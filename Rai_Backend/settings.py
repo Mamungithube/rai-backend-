@@ -231,6 +231,10 @@ CELERY_BEAT_SCHEDULE = {
         "task": "betting.tasks.sync_odds_data",
         "schedule": crontab(minute='*/20'),
     },
+    "sync-futures-odds-every-6-hours": {
+        "task": "betting.tasks.sync_futures_odds",
+        "schedule": crontab(minute=0, hour='*/6'),
+    },
 }
 
 AUTH_PASSWORD_VALIDATORS = [

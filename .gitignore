@@ -21,3 +21,4 @@ logs.md
 db.sqlite3
 AI_Client_requerment.md
 ADMIN_DASHBOARD_API_DOCS.md
+celerybeat-schedule*
