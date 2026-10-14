@@ -6,7 +6,7 @@ from django.utils.crypto import constant_time_compare
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import User, OTP
 from .otp_service import generate_otp, send_otp
-from Rai_Backend.utils import get_client_ip
+from config.utils import get_client_ip
 
 logger = structlog.get_logger(__name__)
 

@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.utils.decorators import method_decorator
 from django.views.decorators.cache import cache_page
 from rest_framework import viewsets, status
@@ -5,7 +6,7 @@ from rest_framework.decorators import action
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
-from .models import Pick, UserParlay
+from .models import Pick, UserParlay, SavedPick
 from .serializers import PickSerializer, ParlaySerializer
 from .services import BettingService
 
@@ -65,14 +66,13 @@ class BettingViewSet(viewsets.ViewSet):
     def toggle_save(self, request, pk=None):
         try:
             pick = Pick.objects.get(pk=pk)
-            from .models import SavedPick
             sp, created = SavedPick.objects.get_or_create(
                 user=request.user, pick=pick)
             if not created:
                 sp.delete()
                 return Response({"status": "removed"})
             return Response({"status": "saved"})
-        except Pick.DoesNotExist:
+        except (Pick.DoesNotExist, ValidationError, ValueError):
             return Response({"error": "Pick not found"}, status=404)
 
     @action(detail=True, methods=['post'])
@@ -82,7 +82,7 @@ class BettingViewSet(viewsets.ViewSet):
             parlay.is_tracked = True
             parlay.save(update_fields=['is_tracked'])
             return Response({"status": "sent_to_tracking"})
-        except UserParlay.DoesNotExist:
+        except (UserParlay.DoesNotExist, ValidationError, ValueError):
             return Response({"error": "Parlay not found"}, status=404)
 
     @action(detail=False, methods=['get'])

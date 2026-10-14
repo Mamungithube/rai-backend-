@@ -1,7 +1,13 @@
 import os
+import sys
+from pathlib import Path
 import django
 
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'Rai_Backend.settings')
+BASE_DIR = Path(__file__).resolve().parent.parent
+sys.path.insert(0, str(BASE_DIR / "apps"))
+sys.path.insert(0, str(BASE_DIR))
+
+os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'config.settings')
 django.setup()
 
 from django.core.asgi import get_asgi_application

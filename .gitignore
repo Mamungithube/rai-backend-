@@ -17,8 +17,8 @@ community_icons
 dashboard.json
 chat_images
 community_audiodb.sqlite3
-logs.md
+docs/logs.md
 db.sqlite3
-AI_Client_requerment.md
-ADMIN_DASHBOARD_API_DOCS.md
+docs/AI_Client_requerment.md
+docs/ADMIN_DASHBOARD_API_DOCS.md
 celerybeat-schedule*

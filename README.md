@@ -129,17 +129,39 @@ docker-compose logs -f web
    ```
 4. **Start Celery (In separate terminal windows)**:
    ```bash
-   celery -A Rai_Backend worker -l info
-   celery -A Rai_Backend beat -l info
+   celery -A config worker -l info
+   celery -A config beat -l info
    ```
 
 ---
 
-## 🔌 API Overview
+## ⚡ Developer Quickstart (Single Commands)
+
+We provide a `Makefile` for streamlined development:
+
+| Command | Action |
+| :--- | :--- |
+| `make up` | Start all docker containers in the background |
+| `make down` | Stop all docker containers |
+| `make build` | Rebuild and spin up containers |
+| `make logs` | Follow logs from the web container |
+| `make migrate` | Run database migrations |
+| `make seed` | Populate development data (pages, sport categories, demo picks, admin) |
+| `make superuser` | Create Django superuser interactively |
+| `make test` | Run the automated test suite |
+
+---
+
+## 🔌 API Overview & Documentation
 
 The API is fully documented via Swagger/OpenAPI. Once running, access the documentation at:
 - **Swagger UI**: `/api/docs/`
+- **ReDoc**: `/api/redoc/`
 - **OpenAPI Schema**: `/api/schema/`
+
+> 🔑 **API Docs Basic Auth Credentials:**  
+> - **Username:** `Admin` (configurable via `DOCS_USERNAME` in `.env`)  
+> - **Password:** `password` (configurable via `DOCS_PASSWORD` in `.env`)
 
 ### Key Endpoint Prefixes:
 - `POST /api/auth/` - Authentication, OTPs, Token generation.
@@ -147,16 +169,16 @@ The API is fully documented via Swagger/OpenAPI. Once running, access the docume
 - `GET/POST /api/community/` - Community management and invites.
 - `GET/POST /api/betting/` - Real-time matches, expert picks, and parlay construction.
 - `GET/POST /api/support/` - Ticket creation and updates.
+- `GET /api/pages/` - App pages (About Us, Privacy Policy, Terms & Conditions).
 
 ---
 
 ## 🔒 Security & Optimization Notes
 
+- **Modular Settings & Apps**: `config/settings/` dynamically switches between `development.py` and `production.py`. All apps live under `apps/`.
 - **Throttling**: The API utilizes DRF's `ScopedRateThrottle` for anonymous requests, OTP requests, logins, media uploads, and community interactions to prevent abuse.
 - **Cache Invalidation**: Signals are explicitly written in model `.save()` and `.delete()` methods to clear specific Redis keys instantly, ensuring state consistency without relying entirely on TTLs.
 - **Routing Isolation**: Celery limits AI Generation tasks to a dedicated `heavy_queue` running on `prefork` pools to prevent blocking fast IO tasks running on the `default` threaded pool.
 
 ---
-*Built with precision and high standards for scalability.*
-"# rai-backend-" 
-"# rai-backend-" 
+*Built with precision and high standards for scalability.* 

@@ -16,7 +16,7 @@ from .serializers import (
     AdminSupportTicketSerializer,
     AppPageSerializer
 )
-from Rai_Backend.utils import api_response
+from config.utils import api_response
 
 User = get_user_model()
 

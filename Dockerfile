@@ -2,6 +2,7 @@ FROM python:3.11-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV PYTHONPATH="/app:/app/apps"
 
 WORKDIR /app
 
@@ -13,8 +14,7 @@ RUN apt-get update && apt-get install -y \
 
 COPY requirements.txt .
 RUN pip install --upgrade pip \
-    && pip install -r requirements.txt \
-    && pip install gunicorn uvicorn[standard]
+    && pip install -r requirements.txt
 
 RUN addgroup --system appgroup && adduser --system --ingroup appgroup appuser
 
@@ -28,7 +28,7 @@ RUN mkdir -p /app/logs /app/staticfiles /app/media \
 RUN SECRET_KEY="dummy_key_for_build" python manage.py collectstatic --noinput --clear
 
 RUN chown -R appuser:appgroup /app \
-    && chmod -R 777 /app/logs /app/media /app/staticfiles
+    && chmod -R 775 /app/logs /app/media /app/staticfiles
 
 USER appuser
 
@@ -36,4 +36,4 @@ EXPOSE 8000
 
 ENTRYPOINT ["/app/entrypoint.sh"]
 
-CMD ["gunicorn", "Rai_Backend.asgi:application", "--bind", "0.0.0.0:8000", "-k", "uvicorn.workers.UvicornWorker", "--workers", "3"]
+CMD ["gunicorn", "config.asgi:application", "--bind", "0.0.0.0:8000", "-k", "uvicorn.workers.UvicornWorker", "--workers", "3"]
