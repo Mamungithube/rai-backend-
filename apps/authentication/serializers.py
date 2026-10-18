@@ -8,7 +8,7 @@ from rest_framework_simplejwt.serializers import TokenObtainPairSerializer
 from django.conf import settings
 from PIL import Image
 from django.utils.crypto import constant_time_compare
-from django.core.validators import validate_email
+from django.core.validators import validate_email, RegexValidator
 from django.core.exceptions import ValidationError as DjangoValidationError
 from drf_spectacular.utils import extend_schema_field
 from django.core.files.base import ContentFile
@@ -212,6 +212,14 @@ class MyTokenObtainPairSerializer(TokenObtainPairSerializer):
 
 
 class ProfileSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(
+        required=False,
+        max_length=150,
+        validators=[RegexValidator(
+            regex=r'^[\w.@+-]+$',
+            message='Username can only contain letters, numbers and @/./+/-/_ characters.'
+        )]
+    )
     profile_picture = Base64ImageField(required=False, allow_null=True)
 
     class Meta:
@@ -220,7 +228,15 @@ class ProfileSerializer(serializers.ModelSerializer):
             'username', 'email', 'phone', 'profile_picture',
             'date_of_birth', 'bio', 'first_name', 'last_name'
         ]
-        read_only_fields = ['username', 'email', 'phone']
+        read_only_fields = ['email', 'phone']
+
+    def validate_username(self, value):
+        value = value.strip()
+        if len(value) < 3:
+            raise serializers.ValidationError("Username must be at least 3 characters long.")
+        if self.instance and User.objects.filter(username__iexact=value).exclude(id=self.instance.id).exists():
+            raise serializers.ValidationError("This username is already taken.")
+        return value
 
     def update(self, instance, validated_data):
         profile_picture = validated_data.pop('profile_picture', None)

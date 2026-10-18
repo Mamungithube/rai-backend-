@@ -72,3 +72,20 @@ class UserModelAndAuthTests(TestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertEqual(response.data.get('username'), 'mamun')
         self.assertEqual(response.data.get('email'), 'mamun@example.com')
+
+    def test_update_profile_username_success(self):
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch('/api/auth/profile/update/', {
+            'username': 'new_mamun'
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.user.refresh_from_db()
+        self.assertEqual(self.user.username, 'new_mamun')
+
+    def test_update_profile_username_duplicate_rejected(self):
+        User.objects.create_user(username="existing_user", password="Password123!")
+        self.client.force_authenticate(user=self.user)
+        response = self.client.patch('/api/auth/profile/update/', {
+            'username': 'existing_user'
+        }, format='json')
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
