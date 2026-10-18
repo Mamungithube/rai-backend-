@@ -231,10 +231,10 @@ class ProfileSerializer(serializers.ModelSerializer):
         read_only_fields = ['email', 'phone']
 
     def validate_username(self, value):
-        value = value.strip()
+        value = value.lower().strip()
         if len(value) < 3:
             raise serializers.ValidationError("Username must be at least 3 characters long.")
-        if self.instance and User.objects.filter(username__iexact=value).exclude(id=self.instance.id).exists():
+        if self.instance and User.objects.filter(username=value).exclude(id=self.instance.id).exists():
             raise serializers.ValidationError("This username is already taken.")
         return value
 

@@ -89,3 +89,34 @@ class UserModelAndAuthTests(TestCase):
             'username': 'existing_user'
         }, format='json')
         self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+
+    def test_login_with_updated_username(self):
+        # 1. Update username
+        self.client.force_authenticate(user=self.user)
+        self.client.patch('/api/auth/profile/update/', {'username': 'updated_mamun'}, format='json')
+
+        # 2. Logout / unauthenticate
+        self.client.logout()
+
+        # 3. Old username login should fail
+        res_old = self.client.post('/api/auth/login/', {
+            'username': 'mamun',
+            'password': 'StrongPassword123!'
+        }, format='json')
+        self.assertEqual(res_old.status_code, status.HTTP_401_UNAUTHORIZED)
+
+        # 4. New username login should succeed
+        res_new = self.client.post('/api/auth/login/', {
+            'username': 'updated_mamun',
+            'password': 'StrongPassword123!'
+        }, format='json')
+        self.assertEqual(res_new.status_code, status.HTTP_200_OK)
+        self.assertIn('access', res_new.data)
+
+        # 5. Email login still works seamlessly
+        res_email = self.client.post('/api/auth/login/', {
+            'username': 'mamun@example.com',
+            'password': 'StrongPassword123!'
+        }, format='json')
+        self.assertEqual(res_email.status_code, status.HTTP_200_OK)
+        self.assertIn('access', res_email.data)
