@@ -6,5 +6,6 @@ class IsAppAdmin(permissions.BasePermission):
         return bool(
             request.user and
             request.user.is_authenticated and
-            request.user.is_admin
+            (getattr(request.user, 'is_admin', False) or getattr(request.user, 'is_superuser', False) or getattr(request.user, 'is_staff', False))
         )
+

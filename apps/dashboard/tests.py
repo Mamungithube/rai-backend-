@@ -48,3 +48,55 @@ class AppPagesAPITestCase(TestCase):
         response = self.client.get("/api/pages/")
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertGreaterEqual(len(response.data), 3)
+
+
+class AdminOverviewAPITestCase(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.admin = User.objects.create_superuser(
+            username="testadmin",
+            email="admin@test.com",
+            password="AdminPassword123!",
+            first_name="Peter John",
+            last_name="White"
+        )
+        self.user1 = User.objects.create_user(
+            username="trendify_co",
+            email="test@gmail.com",
+            password="UserPassword123!",
+            first_name="Trendify",
+            last_name="Co."
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_get_overview_authenticated_admin(self):
+        response = self.client.get("/api/dashboard/overview/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data["success"])
+        data = response.data["data"]
+
+        # Check header
+        self.assertIn("greeting", data["header"])
+        self.assertIn("Peter John White", data["header"]["admin_name"])
+
+        # Check user_overview
+        self.assertEqual(data["user_overview"]["total_users"], 1)
+        self.assertIn("cards", data["user_overview"])
+        self.assertEqual(len(data["user_overview"]["cards"]), 4)
+
+        # Check growth_overview
+        self.assertIn("labels", data["growth_overview"])
+        self.assertIn("data", data["growth_overview"])
+
+        # Check subscriber/recent user list
+        self.assertEqual(len(data["recent_users"]), 1)
+        self.assertEqual(data["recent_users"][0]["username"], "trendify_co")
+
+    def test_get_overview_growth_filters(self):
+        for f in ["this_week", "this_month", "this_year"]:
+            response = self.client.get(f"/api/dashboard/overview/?growth_filter={f}")
+            self.assertEqual(response.status_code, status.HTTP_200_OK)
+            self.assertEqual(response.data["data"]["growth_overview"]["current_filter"], f)
+

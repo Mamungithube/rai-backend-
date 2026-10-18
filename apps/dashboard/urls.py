@@ -4,10 +4,12 @@ from .views import (
     AdminUserViewSet, 
     AdminCommunityViewSet, 
     AdminSupportViewSet, 
-    AdminPageSettingsViewSet
+    AdminPageSettingsViewSet,
+    AdminOverviewViewSet
 )
 
 router = DefaultRouter()
+router.register(r'overview', AdminOverviewViewSet, basename='admin-overview')
 router.register(r'users', AdminUserViewSet, basename='admin-users')
 router.register(r'communities', AdminCommunityViewSet, basename='admin-communities')
 router.register(r'support', AdminSupportViewSet, basename='admin-support')

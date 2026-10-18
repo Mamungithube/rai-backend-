@@ -147,3 +147,145 @@ class AdminPageSettingsViewSet(viewsets.ModelViewSet):
         page.content = content
         page.save(update_fields=['content'])
         return api_response(message=f"{page.title} updated successfully")
+
+
+class AdminOverviewViewSet(viewsets.ViewSet):
+    permission_classes = [IsAppAdmin]
+
+    def list(self, request):
+        now = timezone.now()
+
+        # 1. Greeting & Admin Profile
+        hour = now.hour
+        if 5 <= hour < 12:
+            greeting = "Good morning"
+        elif 12 <= hour < 17:
+            greeting = "Good afternoon"
+        else:
+            greeting = "Good evening"
+
+        admin_user = request.user
+        admin_name = f"{admin_user.first_name} {admin_user.last_name}".strip() or admin_user.username
+        admin_photo = None
+        if getattr(admin_user, 'profile_picture', None):
+            url = admin_user.profile_picture.url
+            admin_photo = url if url.startswith('http') else request.build_absolute_uri(url)
+
+        # 2. User Overview Metrics
+        users_qs = User.objects.filter(is_superuser=False)
+        total_users = users_qs.count()
+        active_users = users_qs.filter(is_active=True).count()
+        today_start = now.replace(hour=0, minute=0, second=0, microsecond=0)
+        new_users_today = users_qs.filter(created_at__gte=today_start).count()
+        verified_users = users_qs.filter(Q(is_email_verified=True) | Q(is_phone_verified=True)).count()
+
+        cards = [
+            {
+                "id": "total_user",
+                "title": "Total User",
+                "value": total_users,
+                "subtitle": "Total registered user since",
+                "icon": "users"
+            },
+            {
+                "id": "free_user",
+                "title": "Free Plan User",
+                "value": total_users,
+                "subtitle": "Total users who are using free plan",
+                "icon": "user_check"
+            },
+            {
+                "id": "plus_user",
+                "title": "rai Plus User",
+                "value": 0,
+                "subtitle": "Total users who are using plus plan",
+                "icon": "award"
+            },
+            {
+                "id": "premium_user",
+                "title": "rai Premium User",
+                "value": 0,
+                "subtitle": "Total users who are using premium plan",
+                "icon": "crown"
+            }
+        ]
+
+        # 3. Growth Overview (Chart)
+        growth_filter = request.query_params.get('growth_filter', 'this_month')
+        growth_labels = []
+        growth_data = []
+
+        if growth_filter == 'this_year':
+            for m in range(1, now.month + 1):
+                month_dt = timezone.datetime(now.year, m, 1)
+                growth_labels.append(month_dt.strftime("%b"))
+                m_count = users_qs.filter(created_at__year=now.year, created_at__month=m).count()
+                growth_data.append(m_count)
+        elif growth_filter == 'this_week':
+            week_start = (now - timezone.timedelta(days=6)).date()
+            cur_day = week_start
+            while cur_day <= now.date():
+                growth_labels.append(cur_day.strftime("%a"))
+                d_count = users_qs.filter(created_at__date=cur_day).count()
+                growth_data.append(d_count)
+                cur_day += timezone.timedelta(days=1)
+        else:  # 'this_month' (default)
+            month_start = now.replace(day=1, hour=0, minute=0, second=0, microsecond=0).date()
+            cur_day = month_start
+            while cur_day <= now.date():
+                growth_labels.append(cur_day.strftime("%d %b"))
+                d_count = users_qs.filter(created_at__date=cur_day).count()
+                growth_data.append(d_count)
+                cur_day += timezone.timedelta(days=1)
+
+        # 4. Today's Subscribers / Recent Users List
+        recent_users_qs = users_qs.order_by('-created_at')[:10]
+        subscriber_list = []
+        for idx, u in enumerate(recent_users_qs, start=1):
+            photo_url = None
+            if u.profile_picture:
+                p_url = u.profile_picture.url
+                photo_url = p_url if p_url.startswith('http') else request.build_absolute_uri(p_url)
+            full_name = f"{u.first_name} {u.last_name}".strip() or u.username
+
+            subscriber_list.append({
+                "sl": f"{idx:02d}",
+                "id": u.id,
+                "username": u.username,
+                "name": full_name,
+                "photo": photo_url,
+                "email": u.email or "N/A",
+                "subscribed_plan": "Standard Free",
+                "purchase_date": u.created_at.strftime("%d %b %y\n%I:%M %p"),
+                "expire_date": "Lifetime / N/A",
+                "status": "Active" if u.is_active else "Inactive",
+                "is_active": u.is_active
+            })
+
+        return Response({
+            "header": {
+                "greeting": greeting,
+                "admin_name": f"{admin_name}! 👋",
+                "admin_photo": admin_photo
+            },
+            "user_overview": {
+                "total_users": total_users,
+                "active_users": active_users,
+                "new_users_today": new_users_today,
+                "verified_users": verified_users,
+                "free_plan_users": total_users,
+                "plus_users": 0,
+                "premium_users": 0,
+                "cards": cards
+            },
+            "growth_overview": {
+                "current_filter": growth_filter,
+                "available_filters": ["this_week", "this_month", "this_year"],
+                "labels": growth_labels,
+                "data": growth_data
+            },
+            "today_subscribers": subscriber_list,
+            "recent_users": subscriber_list
+        })
+
+
