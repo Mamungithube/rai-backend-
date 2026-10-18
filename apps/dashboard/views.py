@@ -50,6 +50,11 @@ class AdminUserViewSet(
             )
         return queryset
 
+    @extend_schema(
+        tags=["dashboard"],
+        summary="Toggle User Ban/Active Status",
+        description="Toggle active status of a user (ban or unban)."
+    )
     @action(detail=True, methods=['post'])
     def toggle_status(self, request, pk=None):
         """Action to Ban/Unban user"""
@@ -58,6 +63,33 @@ class AdminUserViewSet(
         user.save(update_fields=['is_active'])
         status_text = "Active" if user.is_active else "Inactive"
         return api_response(message=f"User status changed to {status_text}", data={"status": status_text})
+
+    @extend_schema(
+        tags=["dashboard"],
+        summary="Delete User",
+        description="Permanently delete a normal user account. Prevents deleting own account or other admin accounts."
+    )
+    def destroy(self, request, *args, **kwargs):
+        user = self.get_object()
+        if user.id == request.user.id:
+            return api_response(
+                message="You cannot delete your own admin account.",
+                success=False,
+                status_code=status.HTTP_400_BAD_REQUEST
+            )
+        if user.is_staff or getattr(user, 'is_admin', False) or user.is_superuser:
+            return api_response(
+                message="Admin or staff accounts cannot be deleted.",
+                success=False,
+                status_code=status.HTTP_403_FORBIDDEN
+            )
+
+        username = user.username
+        self.perform_destroy(user)
+        return api_response(
+            message=f"User '{username}' deleted successfully.",
+            status_code=status.HTTP_200_OK
+        )
 
 
 class AdminCommunityViewSet(
@@ -278,30 +310,33 @@ class AdminOverviewViewSet(viewsets.ViewSet):
                 "is_active": u.is_active
             })
 
-        return Response({
-            "header": {
-                "greeting": greeting,
-                "admin_name": f"{admin_name}! 👋",
-                "admin_photo": admin_photo
-            },
-            "user_overview": {
-                "total_users": total_users,
-                "active_users": active_users,
-                "new_users_today": new_users_today,
-                "verified_users": verified_users,
-                "free_plan_users": total_users,
-                "plus_users": 0,
-                "premium_users": 0,
-                "cards": cards
-            },
-            "growth_overview": {
-                "current_filter": growth_filter,
-                "available_filters": ["this_week", "this_month", "this_year"],
-                "labels": growth_labels,
-                "data": growth_data
-            },
-            "today_subscribers": subscriber_list,
-            "recent_users": subscriber_list
-        })
+        return api_response(
+            message="Overview data retrieved successfully",
+            data={
+                "header": {
+                    "greeting": greeting,
+                    "admin_name": f"{admin_name}! 👋",
+                    "admin_photo": admin_photo
+                },
+                "user_overview": {
+                    "total_users": total_users,
+                    "active_users": active_users,
+                    "new_users_today": new_users_today,
+                    "verified_users": verified_users,
+                    "free_plan_users": total_users,
+                    "plus_users": 0,
+                    "premium_users": 0,
+                    "cards": cards
+                },
+                "growth_overview": {
+                    "current_filter": growth_filter,
+                    "available_filters": ["this_week", "this_month", "this_year"],
+                    "labels": growth_labels,
+                    "data": growth_data
+                },
+                "today_subscribers": subscriber_list,
+                "recent_users": subscriber_list
+            }
+        )
 
 

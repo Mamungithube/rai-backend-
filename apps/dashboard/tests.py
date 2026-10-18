@@ -100,3 +100,54 @@ class AdminOverviewAPITestCase(TestCase):
             self.assertEqual(response.status_code, status.HTTP_200_OK)
             self.assertEqual(response.data["data"]["growth_overview"]["current_filter"], f)
 
+
+class AdminUserAPITestCase(TestCase):
+    def setUp(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        self.admin = User.objects.create_superuser(
+            username="admin_user",
+            email="admin@rai.com",
+            password="AdminPassword123!"
+        )
+        self.other_admin = User.objects.create_user(
+            username="staff_user",
+            email="staff@rai.com",
+            password="StaffPassword123!",
+            is_staff=True
+        )
+        self.target_user = User.objects.create_user(
+            username="target_user",
+            email="target@rai.com",
+            password="UserPassword123!"
+        )
+        self.client = APIClient()
+        self.client.force_authenticate(user=self.admin)
+
+    def test_list_users(self):
+        import json
+        response = self.client.get("/api/dashboard/users/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        body = json.loads(response.content)
+        self.assertTrue(body["success"])
+        results = body.get("data", [])
+        self.assertTrue(any(u.get("username") == "target_user" for u in results))
+
+    def test_delete_user_success(self):
+        from django.contrib.auth import get_user_model
+        User = get_user_model()
+        response = self.client.delete(f"/api/dashboard/users/{self.target_user.id}/")
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertTrue(response.data.get("success"))
+        self.assertFalse(User.objects.filter(id=self.target_user.id).exists())
+
+    def test_delete_self_prevented(self):
+        response = self.client.delete(f"/api/dashboard/users/{self.admin.id}/")
+        # Admin is superuser so not in get_queryset (404) or blocked (400)
+        self.assertIn(response.status_code, [status.HTTP_400_BAD_REQUEST, status.HTTP_404_NOT_FOUND])
+
+    def test_delete_other_staff_prevented(self):
+        response = self.client.delete(f"/api/dashboard/users/{self.other_admin.id}/")
+        self.assertEqual(response.status_code, status.HTTP_403_FORBIDDEN)
+        self.assertFalse(response.data.get("success"))
+

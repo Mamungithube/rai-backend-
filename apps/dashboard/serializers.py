@@ -16,7 +16,7 @@ class AdminUserListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'photo', 'name', 'email', 'phone', 'join_date', 'status', 'is_active']
+        fields = ['id', 'username', 'photo', 'name', 'email', 'phone', 'join_date', 'status', 'is_active']
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_photo(self, obj):
