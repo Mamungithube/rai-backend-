@@ -3,7 +3,7 @@ import requests
 from celery import shared_task
 from django.conf import settings
 from django.utils import timezone
-from .models import Match, Pick, SportCategory
+from .models import Match, Pick, SportCategory, BookmakerOdds
 from .utils import calculate_metrics, calculate_no_vig_probs, american_to_decimal
 
 logger = structlog.get_logger(__name__)
@@ -85,7 +85,7 @@ def sync_odds_data():
                             odds = outcome['price']
                             metrics = calculate_metrics(odds, fair_market_probs[team_name])
 
-                            _, created = Pick.objects.update_or_create(
+                            pick_obj, created = Pick.objects.update_or_create(
                                 match=match,
                                 team_selected=team_name,
                                 defaults={
@@ -97,6 +97,25 @@ def sync_odds_data():
                                     'ev_percentage': metrics['ev']
                                 }
                             )
+
+                            # Save bookmaker lines for Line Shopping
+                            for bookie in bookmakers:
+                                b_key = bookie.get('key')
+                                b_title = bookie.get('title', b_key)
+                                for bm_market in bookie.get('markets', []):
+                                    if bm_market.get('key') == 'h2h':
+                                        for bm_outcome in bm_market.get('outcomes', []):
+                                            if bm_outcome.get('name') == team_name:
+                                                BookmakerOdds.objects.update_or_create(
+                                                    pick=pick_obj,
+                                                    bookmaker_key=b_key,
+                                                    defaults={
+                                                        'bookmaker_name': b_title,
+                                                        'odds_american': bm_outcome.get('price'),
+                                                        'point_spread': bm_outcome.get('point')
+                                                    }
+                                                )
+
                             if created:
                                 picks_created += 1
                             else:

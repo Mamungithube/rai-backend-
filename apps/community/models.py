@@ -80,6 +80,7 @@ class CommunityMessage(models.Model):
     community = models.ForeignKey(Community, on_delete=models.CASCADE, related_name="messages", db_index=True)
     sender = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="sent_community_messages")
     text = models.TextField(blank=True)
+    pick = models.ForeignKey('betting.Pick', on_delete=models.SET_NULL, null=True, blank=True, related_name='community_messages')
     image = models.ImageField(upload_to='community_images/', null=True, blank=True)
     audio = models.FileField(upload_to='community_audio/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True, db_index=True)

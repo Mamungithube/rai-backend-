@@ -159,14 +159,22 @@ class CommunityDetailSerializer(serializers.ModelSerializer):
 
 class CommunityMessageSerializer(serializers.ModelSerializer):
     sender = UserShortSerializer(read_only=True)
+    pick = serializers.SerializerMethodField()
     image = serializers.SerializerMethodField()
     audio = serializers.SerializerMethodField()
     isme = serializers.SerializerMethodField()
 
     class Meta:
         model = CommunityMessage
-        fields = ['id', 'community', 'sender', 'text', 'image', 'audio', 'created_at', 'isme']
-        read_only_fields = ['id', 'created_at', 'sender', 'image', 'audio', 'isme']
+        fields = ['id', 'community', 'sender', 'text', 'pick', 'image', 'audio', 'created_at', 'isme']
+        read_only_fields = ['id', 'created_at', 'sender', 'pick', 'image', 'audio', 'isme']
+
+    @extend_schema_field(serializers.DictField(allow_null=True))
+    def get_pick(self, obj):
+        if getattr(obj, 'pick', None):
+            from betting.serializers import PickSerializer
+            return PickSerializer(obj.pick, context=self.context).data
+        return None
 
     @extend_schema_field(serializers.BooleanField)
     def get_isme(self, obj):

@@ -118,3 +118,48 @@ class SavedPick(models.Model):
     def delete(self, *args, **kwargs):
         cache.delete(f'user_saved_picks_{self.user_id}')
         super().delete(*args, **kwargs)
+
+
+class UserStraightBet(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="straight_bets")
+    pick = models.ForeignKey(Pick, on_delete=models.CASCADE, related_name="tracked_straight_bets")
+    is_tracked = models.BooleanField(default=True, db_index=True)
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+
+    class Meta:
+        unique_together = ('user', 'pick')
+        indexes = [
+            models.Index(fields=['user', 'is_tracked']),
+            models.Index(fields=['user', '-created_at']),
+        ]
+
+    def save(self, *args, **kwargs):
+        super().save(*args, **kwargs)
+        cache.delete(f'user_straight_bets_{self.user_id}')
+
+    def delete(self, *args, **kwargs):
+        cache.delete(f'user_straight_bets_{self.user_id}')
+        super().delete(*args, **kwargs)
+
+    def __str__(self):
+        return f"{self.user} - {self.pick.team_selected} (Tracked: {self.is_tracked})"
+
+
+class BookmakerOdds(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    pick = models.ForeignKey(Pick, on_delete=models.CASCADE, related_name="bookmaker_odds")
+    bookmaker_key = models.CharField(max_length=50, db_index=True)
+    bookmaker_name = models.CharField(max_length=100)
+    odds_american = models.IntegerField()
+    point_spread = models.FloatField(null=True, blank=True)
+    last_update = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('pick', 'bookmaker_key')
+        indexes = [
+            models.Index(fields=['pick', 'bookmaker_key']),
+        ]
+
+    def __str__(self):
+        return f"{self.bookmaker_name}: {self.odds_american} ({self.pick.team_selected})"
