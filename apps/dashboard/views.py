@@ -154,7 +154,7 @@ class AdminOverviewViewSet(viewsets.ViewSet):
     permission_classes = [IsAppAdmin]
 
     @extend_schema(
-        tags=["Admin Dashboard"],
+        tags=["dashboard"],
         summary="Get Admin Dashboard Overview",
         description="Returns high-level overview metrics for Admin Dashboard: User Overview cards (Total, Free Plan, Plus, Premium), Growth Overview graph data (with filter: this_week, this_month, this_year), and Today's Subscribers / Recent Users table.",
         parameters=[

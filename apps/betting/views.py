@@ -48,7 +48,7 @@ class BettingViewSet(viewsets.ViewSet):
         return Response(PickSerializer(picks, many=True).data)
 
     @extend_schema(
-        tags=["Betting"],
+        tags=["betting"],
         summary="Get Creators Picks",
         description="Picks created by featured handicappers and betting experts.",
         parameters=[
@@ -117,7 +117,7 @@ class BettingViewSet(viewsets.ViewSet):
             return Response({"error": "Parlay not found"}, status=404)
 
     @extend_schema(
-        tags=["Betting"],
+        tags=["betting"],
         summary="Toggle Track Straight Bet",
         description="Track or untrack an individual pick/bet directly in Live Bet Tracking without adding to a parlay.",
         responses={200: dict, 201: dict}
@@ -144,7 +144,7 @@ class BettingViewSet(viewsets.ViewSet):
             return Response({"error": "Pick not found"}, status=404)
 
     @extend_schema(
-        tags=["Betting"],
+        tags=["betting"],
         summary="List User Tracked Straight Bets",
         description="Retrieve all individual straight bets currently marked as tracked by the user.",
         responses={200: UserStraightBetSerializer(many=True)}
@@ -175,7 +175,7 @@ class BettingViewSet(viewsets.ViewSet):
             })
 
     @extend_schema(
-        tags=["Betting"],
+        tags=["betting"],
         summary="Line Shopping for a Pick",
         description="Compares odds and point spreads across multiple top bookmakers (DraftKings, FanDuel, Caesars, BetMGM) and highlights the best line available.",
         responses={200: dict}
@@ -231,7 +231,7 @@ class BettingViewSet(viewsets.ViewSet):
             return Response({"error": "Pick not found"}, status=404)
 
     @extend_schema(
-        tags=["Betting"],
+        tags=["betting"],
         summary="List Shareable Communities",
         description="Returns list of communities the authenticated user belongs to, for pick sharing.",
         responses={200: list}
@@ -257,7 +257,7 @@ class BettingViewSet(viewsets.ViewSet):
         return Response(communities)
 
     @extend_schema(
-        tags=["Betting"],
+        tags=["betting"],
         summary="Share Pick to Community",
         description="Share a pick with optional custom message into a community group chat.",
         request=SharePickSerializer,
