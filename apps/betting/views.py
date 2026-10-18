@@ -15,6 +15,7 @@ from .serializers import (
     SharePickSerializer
 )
 from .services import BettingService
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 
 class BettingViewSet(viewsets.ViewSet):
@@ -46,6 +47,15 @@ class BettingViewSet(viewsets.ViewSet):
             is_pick_of_the_day=True).select_related('match__sport')
         return Response(PickSerializer(picks, many=True).data)
 
+    @extend_schema(
+        tags=["Betting"],
+        summary="Get Creators Picks",
+        description="Picks created by featured handicappers and betting experts.",
+        parameters=[
+            OpenApiParameter("sport", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Filter by sport category name"),
+            OpenApiParameter("creator", OpenApiTypes.STR, OpenApiParameter.QUERY, description="Filter by expert / creator name")
+        ]
+    )
     @method_decorator(cache_page(60 * 5))
     @action(detail=False, methods=['get'])
     def creators_picks(self, request):
@@ -106,6 +116,12 @@ class BettingViewSet(viewsets.ViewSet):
         except (UserParlay.DoesNotExist, ValidationError, ValueError):
             return Response({"error": "Parlay not found"}, status=404)
 
+    @extend_schema(
+        tags=["Betting"],
+        summary="Toggle Track Straight Bet",
+        description="Track or untrack an individual pick/bet directly in Live Bet Tracking without adding to a parlay.",
+        responses={200: dict, 201: dict}
+    )
     @action(detail=True, methods=['post'])
     def track_straight_bet(self, request, pk=None):
         try:
@@ -127,6 +143,12 @@ class BettingViewSet(viewsets.ViewSet):
         except (Pick.DoesNotExist, ValidationError, ValueError):
             return Response({"error": "Pick not found"}, status=404)
 
+    @extend_schema(
+        tags=["Betting"],
+        summary="List User Tracked Straight Bets",
+        description="Retrieve all individual straight bets currently marked as tracked by the user.",
+        responses={200: UserStraightBetSerializer(many=True)}
+    )
     @action(detail=False, methods=['get'])
     def straight_bets(self, request):
         bets = UserStraightBet.objects.filter(
@@ -152,6 +174,12 @@ class BettingViewSet(viewsets.ViewSet):
                 "straight_bets": UserStraightBetSerializer(straight_bets, many=True).data
             })
 
+    @extend_schema(
+        tags=["Betting"],
+        summary="Line Shopping for a Pick",
+        description="Compares odds and point spreads across multiple top bookmakers (DraftKings, FanDuel, Caesars, BetMGM) and highlights the best line available.",
+        responses={200: dict}
+    )
     @action(detail=True, methods=['get'])
     def line_shopping(self, request, pk=None):
         try:
@@ -202,6 +230,12 @@ class BettingViewSet(viewsets.ViewSet):
         except (Pick.DoesNotExist, ValidationError, ValueError):
             return Response({"error": "Pick not found"}, status=404)
 
+    @extend_schema(
+        tags=["Betting"],
+        summary="List Shareable Communities",
+        description="Returns list of communities the authenticated user belongs to, for pick sharing.",
+        responses={200: list}
+    )
     @action(detail=False, methods=['get'])
     def shareable_communities(self, request):
         from community.models import Membership
@@ -222,6 +256,13 @@ class BettingViewSet(viewsets.ViewSet):
             })
         return Response(communities)
 
+    @extend_schema(
+        tags=["Betting"],
+        summary="Share Pick to Community",
+        description="Share a pick with optional custom message into a community group chat.",
+        request=SharePickSerializer,
+        responses={201: dict}
+    )
     @action(detail=True, methods=['post'])
     def share_to_community(self, request, pk=None):
         try:

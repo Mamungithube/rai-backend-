@@ -6,6 +6,7 @@ from django.db.models import Count, Q
 from django.contrib.auth import get_user_model
 from django.utils import timezone
 from rest_framework.pagination import PageNumberPagination
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiTypes
 
 from community.models import Community
 from support.models import SupportTicket
@@ -152,6 +153,21 @@ class AdminPageSettingsViewSet(viewsets.ModelViewSet):
 class AdminOverviewViewSet(viewsets.ViewSet):
     permission_classes = [IsAppAdmin]
 
+    @extend_schema(
+        tags=["Admin Dashboard"],
+        summary="Get Admin Dashboard Overview",
+        description="Returns high-level overview metrics for Admin Dashboard: User Overview cards (Total, Free Plan, Plus, Premium), Growth Overview graph data (with filter: this_week, this_month, this_year), and Today's Subscribers / Recent Users table.",
+        parameters=[
+            OpenApiParameter(
+                name="growth_filter",
+                type=OpenApiTypes.STR,
+                location=OpenApiParameter.QUERY,
+                description="Timeframe filter for growth chart (e.g. this_month, this_week, this_year)",
+                default="this_month",
+                required=False
+            )
+        ]
+    )
     def list(self, request):
         now = timezone.now()
 
