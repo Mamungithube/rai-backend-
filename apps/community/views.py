@@ -41,7 +41,13 @@ class CommunityViewSet(viewsets.ModelViewSet):
         return [permissions.IsAuthenticated()]
 
     def get_queryset(self):
-        return Community.objects.annotate(
+        user = self.request.user
+        if getattr(self, 'swagger_fake_view', False) or not user.is_authenticated:
+            return Community.objects.none()
+
+        return Community.objects.filter(
+            memberships__user=user
+        ).annotate(
             member_count=Count('memberships')
         ).order_by('-updated_at')
 
