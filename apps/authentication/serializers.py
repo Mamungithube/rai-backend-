@@ -73,9 +73,15 @@ class SignupInitiateSerializer(serializers.Serializer):
             if User.objects.filter(email=value).exists():
                 raise serializers.ValidationError("Email already registered.")
         else:
-            if not re.match(r'^\+?1?\d{9,15}$', value):
+            cleaned = re.sub(r'[\s\-\(\)]', '', value)
+            if re.match(r'^\d{10}$', cleaned):
+                cleaned = f"+1{cleaned}"
+            elif not cleaned.startswith('+') and re.match(r'^\d{11,15}$', cleaned):
+                cleaned = f"+{cleaned}"
+            if not re.match(r'^\+?1?\d{9,15}$', cleaned):
                 raise serializers.ValidationError(
                     "Invalid phone number format.")
+            value = cleaned
             if User.objects.filter(phone=value).exists():
                 raise serializers.ValidationError("Phone already registered.")
         return value
@@ -89,6 +95,13 @@ class SignupVerifySerializer(serializers.Serializer):
         value = value.strip()
         if '@' in value:
             value = value.lower()
+        else:
+            cleaned = re.sub(r'[\s\-\(\)]', '', value)
+            if re.match(r'^\d{10}$', cleaned):
+                cleaned = f"+1{cleaned}"
+            elif not cleaned.startswith('+') and re.match(r'^\d{11,15}$', cleaned):
+                cleaned = f"+{cleaned}"
+            value = cleaned
         return value
 
     def validate_otp(self, value):
@@ -107,7 +120,7 @@ class SignupFinalizeSerializer(serializers.ModelSerializer):
     last_name = serializers.CharField(required=True, max_length=100)
     bio = serializers.CharField(
         required=False, allow_blank=True, max_length=500)
-    date_of_birth = serializers.DateField(required=False)
+    date_of_birth = serializers.DateField(required=True)
     profile_picture = Base64ImageField(required=False, allow_null=True)
 
     class Meta:
@@ -153,6 +166,12 @@ class SignupFinalizeSerializer(serializers.ModelSerializer):
                     {"identifier": "This email is already registered."})
         else:
             identifier = identifier.strip()
+            cleaned = re.sub(r'[\s\-\(\)]', '', identifier)
+            if re.match(r'^\d{10}$', cleaned):
+                cleaned = f"+1{cleaned}"
+            elif not cleaned.startswith('+') and re.match(r'^\d{11,15}$', cleaned):
+                cleaned = f"+{cleaned}"
+            identifier = cleaned
             if User.objects.filter(phone=identifier).exists():
                 raise serializers.ValidationError(
                     {"identifier": "This phone number is already registered."})
@@ -454,10 +473,16 @@ class PhoneChangeInitiateSerializer(serializers.Serializer):
 
     def validate_new_phone(self, value):
         value = value.strip()
-        if not re.match(r'^\+?1?\d{9,15}$', value):
+        cleaned = re.sub(r'[\s\-\(\)]', '', value)
+        if re.match(r'^\d{10}$', cleaned):
+            cleaned = f"+1{cleaned}"
+        elif not cleaned.startswith('+') and re.match(r'^\d{11,15}$', cleaned):
+            cleaned = f"+{cleaned}"
+        if not re.match(r'^\+?1?\d{9,15}$', cleaned):
             raise serializers.ValidationError(
                 "Invalid phone number format. Use '+999999999'."
             )
+        value = cleaned
         user = self.context['request'].user
         if value == user.phone:
             raise serializers.ValidationError(

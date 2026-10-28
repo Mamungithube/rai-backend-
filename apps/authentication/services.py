@@ -1,3 +1,4 @@
+import re
 import structlog
 from django.core.cache import cache
 from django.db import transaction, IntegrityError
@@ -18,7 +19,12 @@ class AuthService:
         identifier = identifier.strip()
         if "@" in identifier:
             return identifier.lower()
-        return identifier
+        cleaned = re.sub(r'[\s\-\(\)]', '', identifier)
+        if re.match(r'^\d{10}$', cleaned):
+            return f"+1{cleaned}"
+        if not cleaned.startswith('+') and re.match(r'^\d{11,15}$', cleaned):
+            return f"+{cleaned}"
+        return cleaned
 
     @staticmethod
     def initiate_otp(identifier, request=None):

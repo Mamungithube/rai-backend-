@@ -54,7 +54,7 @@ class UserShortSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['id', 'username', 'first_name', 'last_name', 'profile_picture']
+        fields = ['id', 'username', 'bio', 'profile_picture']
 
     @extend_schema_field(serializers.CharField(allow_null=True))
     def get_profile_picture(self, obj):

@@ -19,7 +19,9 @@ def send_otp_sms(phone, otp):
         "Accept": "application/json"
     }
 
-    phone = phone.replace("+", "")
+    phone = phone.replace("+", "").strip()
+    if len(phone) == 10:
+        phone = "1" + phone
 
     payload = {
         "messages": [

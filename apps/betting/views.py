@@ -106,31 +106,50 @@ class BettingViewSet(viewsets.ViewSet):
         except (Pick.DoesNotExist, ValidationError, ValueError):
             return Response({"error": "Pick not found"}, status=404)
 
-    @action(detail=True, methods=['post'])
+    @extend_schema(
+        tags=["betting"],
+        summary="Send Parlay to Tracking or Untrack",
+        description="Mark a parlay as tracked or untracked in Live Bet Tracking.",
+        responses={200: dict}
+    )
+    @action(detail=True, methods=['post', 'delete'])
     def send_to_tracking(self, request, pk=None):
         try:
             parlay = UserParlay.objects.get(pk=pk, user=request.user)
-            parlay.is_tracked = True
+            if request.method == 'DELETE':
+                parlay.is_tracked = False
+            else:
+                parlay.is_tracked = True
             parlay.save(update_fields=['is_tracked'])
-            return Response({"status": "sent_to_tracking"})
+            return Response({"status": "sent_to_tracking" if parlay.is_tracked else "untracked"})
         except (UserParlay.DoesNotExist, ValidationError, ValueError):
             return Response({"error": "Parlay not found"}, status=404)
 
     @extend_schema(
         tags=["betting"],
         summary="Toggle Track Straight Bet",
-        description="Track or untrack an individual pick/bet directly in Live Bet Tracking without adding to a parlay.",
+        description="Track or untrack an individual pick/bet directly in Live Bet Tracking. Accepts either pick_id or user_straight_bet_id.",
         responses={200: dict, 201: dict}
     )
-    @action(detail=True, methods=['post'])
+    @action(detail=True, methods=['post', 'delete'])
     def track_straight_bet(self, request, pk=None):
         try:
-            pick = Pick.objects.get(pk=pk)
-            straight_bet, created = UserStraightBet.objects.get_or_create(
-                user=request.user, pick=pick,
-                defaults={'is_tracked': True}
-            )
-            if not created:
+            # Check if pk is a UserStraightBet id for this user
+            straight_bet = UserStraightBet.objects.filter(pk=pk, user=request.user).first()
+            if straight_bet:
+                pick = straight_bet.pick
+                created = False
+            else:
+                pick = Pick.objects.get(pk=pk)
+                straight_bet, created = UserStraightBet.objects.get_or_create(
+                    user=request.user, pick=pick,
+                    defaults={'is_tracked': True}
+                )
+
+            if request.method == 'DELETE':
+                straight_bet.is_tracked = False
+                straight_bet.save(update_fields=['is_tracked'])
+            elif not created:
                 straight_bet.is_tracked = not straight_bet.is_tracked
                 straight_bet.save(update_fields=['is_tracked'])
 
@@ -141,7 +160,51 @@ class BettingViewSet(viewsets.ViewSet):
                 "pick_id": pick.id
             }, status=status.HTTP_200_OK if not created else status.HTTP_201_CREATED)
         except (Pick.DoesNotExist, ValidationError, ValueError):
-            return Response({"error": "Pick not found"}, status=404)
+            return Response({"error": "Pick or bet not found"}, status=404)
+
+    @extend_schema(
+        tags=["betting"],
+        summary="Untrack Straight Bet or Parlay",
+        description="Untrack an individual straight bet or parlay by either straight_bet_id, pick_id, or parlay_id.",
+        responses={200: dict, 404: dict}
+    )
+    @action(detail=True, methods=['post', 'delete'])
+    def untrack(self, request, pk=None):
+        try:
+            # 1. Check UserStraightBet by pk
+            straight_bet = UserStraightBet.objects.filter(pk=pk, user=request.user).first()
+            if not straight_bet:
+                # 2. Check UserStraightBet by pick_id
+                straight_bet = UserStraightBet.objects.filter(pick_id=pk, user=request.user).first()
+
+            if straight_bet:
+                straight_bet.is_tracked = False
+                straight_bet.save(update_fields=['is_tracked'])
+                return Response({
+                    "status": "untracked",
+                    "type": "straight",
+                    "straight_bet_id": straight_bet.id,
+                    "pick_id": straight_bet.pick_id
+                }, status=status.HTTP_200_OK)
+
+            # 3. Check UserParlay by pk
+            parlay = UserParlay.objects.filter(pk=pk, user=request.user).first()
+            if parlay:
+                parlay.is_tracked = False
+                parlay.save(update_fields=['is_tracked'])
+                return Response({
+                    "status": "untracked",
+                    "type": "parlay",
+                    "parlay_id": parlay.id
+                }, status=status.HTTP_200_OK)
+
+            return Response({"error": "Tracked bet or parlay not found"}, status=status.HTTP_404_NOT_FOUND)
+        except (ValidationError, ValueError):
+            return Response({"error": "Invalid ID format"}, status=status.HTTP_400_BAD_REQUEST)
+
+    def destroy(self, request, pk=None):
+        """Allow DELETE /api/betting/<id>/ to untrack any tracked straight bet or parlay."""
+        return self.untrack(request, pk)
 
     @extend_schema(
         tags=["betting"],
