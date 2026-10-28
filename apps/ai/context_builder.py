@@ -32,6 +32,16 @@ def generate_conversation_title(client, user_text):
 
 def build_betting_context(user_text):
     picks_to_inject = []
+    user_lower = (user_text or "").lower()
+    in_depth_triggers = ['in-depth', 'in depth', 'give me the in-depth analysis', 'why they can win', 'what could stop them']
+    futures_triggers = [
+        'super bowl', 'superbowl', 'championship', 'champion', 'mvp', 
+        'lombardi', 'division', 'conference', 'win total', 'playoff', 
+        'outright', 'finals', 'world series', 'stanley cup'
+    ]
+    is_in_depth = any(t in user_lower for t in in_depth_triggers)
+    is_futures = any(t in user_lower for t in futures_triggers)
+
     try:
         from betting.models import Pick
 
@@ -46,51 +56,80 @@ def build_betting_context(user_text):
                     Q(team_selected__icontains=kw) |
                     Q(match__sport__name__icontains=kw)
                 )
-            matched_picks = list(
+            
+            qs = (
                 Pick.objects.select_related('match', 'match__sport')
+                .prefetch_related('bookmaker_odds')
                 .filter(match__is_active=True)
                 .filter(q_filter)
-                .order_by('-ev_percentage', '-confidence_percentage')
-                .distinct()[:15]
             )
+            if is_futures:
+                qs = qs.order_by('-is_futures', '-ev_percentage')
+            else:
+                qs = qs.order_by('-ev_percentage', '-confidence_percentage')
+
+            matched_picks = list(qs.distinct()[:15])
 
         if matched_picks:
             picks_to_inject = matched_picks
         else:
-            picks_to_inject = list(
+            base_qs = (
                 Pick.objects.select_related('match', 'match__sport')
+                .prefetch_related('bookmaker_odds')
                 .filter(match__is_active=True)
-                .order_by('-created_at')[:15]
             )
+            if is_futures:
+                base_qs = base_qs.filter(is_futures=True)
+            picks_to_inject = list(base_qs.order_by('-created_at')[:15])
     except Exception as e:
         logger.warning("failed_to_fetch_betting_context", error=str(e), exc_info=True)
         picks_to_inject = []
 
-    if not picks_to_inject:
-        return None
-
     market_context = "REAL-TIME MARKET CONTEXT (Live Betting Odds & Market Consensus):\n"
-    for p in picks_to_inject:
-        is_futures = getattr(p, 'is_futures', False) or p.pick_type in ['Futures', 'Outright Winner']
-        sport_name = p.match.sport.name if p.match and p.match.sport else 'Sports'
-        if is_futures:
-            event_title = p.match.home_team if p.match else 'Outright'
-            market_context += (
-                f"- [FUTURES] [{sport_name}] Event: {event_title} | Outcome: {p.team_selected} | "
-                f"Odds: {p.odds_american} | Edge: {p.edge_percentage}% | EV: {p.ev_percentage}% | "
-                f"Confidence: {p.confidence_percentage}%\n"
-            )
-        else:
-            market_context += (
-                f"- [{sport_name}] {p.match.home_team} vs {p.match.away_team} | "
-                f"Pick: {p.team_selected} ({p.pick_type}) | Odds: {p.odds_american} | "
-                f"Edge: {p.edge_percentage}% | EV: {p.ev_percentage}% | "
-                f"Confidence: {p.confidence_percentage}%\n"
-            )
+    if picks_to_inject:
+        for p in picks_to_inject:
+            p_is_futures = getattr(p, 'is_futures', False) or p.pick_type in ['Futures', 'Outright Winner']
+            sport_name = p.match.sport.name if p.match and p.match.sport else 'Sports'
+            lines_str = ""
+            if hasattr(p, 'bookmaker_odds'):
+                bmo_list = list(p.bookmaker_odds.all()[:4])
+                if bmo_list:
+                    lines_str = " | Lines: " + ", ".join(f"{bmo.bookmaker_name}: {bmo.odds_american:+d}" for bmo in bmo_list)
+
+            if p_is_futures:
+                event_title = p.match.home_team if p.match else 'Outright'
+                market_context += (
+                    f"- [FUTURES] [{sport_name}] Event: {event_title} | Outcome: {p.team_selected} | "
+                    f"Odds: {p.odds_american} | Edge: {p.edge_percentage}% | EV: {p.ev_percentage}% | "
+                    f"Confidence: {p.confidence_percentage}%{lines_str}\n"
+                )
+            else:
+                market_context += (
+                    f"- [{sport_name}] {p.match.home_team} vs {p.match.away_team} | "
+                    f"Pick: {p.team_selected} ({p.pick_type}) | Odds: {p.odds_american} | "
+                    f"Edge: {p.edge_percentage}% | EV: {p.ev_percentage}% | "
+                    f"Confidence: {p.confidence_percentage}%{lines_str}\n"
+                )
+    else:
+        market_context += "No specific database picks found for this query.\n"
+
+    instructions = [
+        "- Use the above live market consensus data when addressing relevant picks, matchups, or odds."
+    ]
+    if is_in_depth:
+        instructions.append("- USER INTENT: IN-DEPTH ANALYSIS. Deliver the Tier 2 deep dive formatted exactly as '# THE IN-DEPTH ANALYSIS' with 'Why They Can Win' and 'What Could Stop Them' (identifying rival contenders with win-loss records and stats).")
+    elif is_futures:
+        instructions.append("- USER INTENT: FUTURES BETTING QUERY. Deliver the Tier 1 concise prediction with realistic futures confidence (10%-28%), key Injuries, Current Lines, and the '[GIVE ME THE IN-DEPTH ANALYSIS]' button at the end.")
+    else:
+        instructions.append("- Standard single game or prop query: follow regular matchup structure.")
+
+    instructions_str = "\n".join(instructions)
 
     logger.info(
         "betting_context_injected",
         query=user_text,
+        is_futures=is_futures,
+        is_in_depth=is_in_depth,
         picks_injected_count=len(picks_to_inject),
     )
 
@@ -98,11 +137,10 @@ def build_betting_context(user_text):
         "role": "system",
         "content": (
             f"{market_context}\n"
-            "CONTEXT USAGE INSTRUCTIONS:\n"
-            "- Use the above live market consensus data when addressing relevant picks, matchups, or odds.\n"
-            "- If the user asks about a game, player, tournament, or market NOT listed above, follow the MISSING DATA PROTOCOL: "
-            "DO NOT state that you lack real-time data or live odds. Seamlessly provide expert analysis based on general sports knowledge, "
-            "tactics, recent form, and historical trends, noting you are analyzing fundamental factors rather than live odds."
+            f"CONTEXT USAGE INSTRUCTIONS:\n"
+            f"{instructions_str}\n"
+            "- If specific odds or matchup data is not listed above, follow the MISSING DATA PROTOCOL: "
+            "provide expert analysis using contemporary current season context, never citing years-old rosters as current."
         ),
     }
 
